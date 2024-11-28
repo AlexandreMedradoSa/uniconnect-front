@@ -16,6 +16,8 @@ interface Evento {
   limite_participantes?: number;
   total_participantes: number;
   participa?: boolean; // Indica se o usuário participa do evento
+  conexoesParticipando?: string[]; // IDs das conexões que estão participando
+  evento_participantes?: string[]; // IDs dos participantes
 }
 
 export default function EventosList() {
@@ -47,27 +49,58 @@ export default function EventosList() {
   const fetchEventos = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/eventos', {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
 
-      const eventosParticipadosResponse = token
-        ? await apiClient.get('/eventos/historico', {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-        : { data: [] };
+      const [eventosResponse, historicoResponse, conexoesResponse] =
+        await Promise.all([
+          apiClient.get('/eventos', {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          }),
+          token
+            ? apiClient.get('/eventos/historico', {
+                headers: { Authorization: `Bearer ${token}` },
+              })
+            : { data: [] },
+          token
+            ? apiClient.get(`/users/${userId}/conexoes`, {
+                headers: { Authorization: `Bearer ${token}` },
+              })
+            : { data: [] },
+        ]);
 
-      const eventosParticipadosIds = eventosParticipadosResponse.data.map(
+      const eventosParticipadosIds = historicoResponse.data.map(
         (evento: Evento) => evento.id,
       );
 
-      const eventosDisponiveis = response.data.map((evento: Evento) => ({
-        ...evento,
-        participa: eventosParticipadosIds.includes(evento.id),
+      const conexoes = conexoesResponse.data.map((conexao: any) => ({
+        id: conexao.id,
+        nome: conexao.name,
       }));
 
+      const eventosDisponiveis = eventosResponse.data.map((evento: Evento) => {
+        const participantesIds = (evento.evento_participantes || []).map(
+          (participante: any) => participante.usuario_id,
+        );
+
+        const conexoesParticipandoNomes = participantesIds
+          .filter((id: string) =>
+            conexoes.some((conexao: { id: string }) => conexao.id === id),
+          )
+          .map((id: string) => {
+            const conexao = conexoes.find(
+              (conexao: { id: string }) => conexao.id === id,
+            );
+            return conexao ? conexao.nome : id;
+          });
+
+        return {
+          ...evento,
+          participa: eventosParticipadosIds.includes(evento.id),
+          conexoesParticipando: conexoesParticipandoNomes,
+        };
+      });
+
       setEventos(eventosDisponiveis);
-      if (token) setHistorico(eventosParticipadosResponse.data);
+      setHistorico(historicoResponse.data);
     } catch (err) {
       console.error('Erro ao buscar eventos:', err);
       setError('Erro ao carregar eventos.');
@@ -320,24 +353,22 @@ export default function EventosList() {
                   <strong>Curso:</strong> {evento.curso}
                 </p>
                 <p>
-                  <strong>Participantes:</strong>{' '}
-                  {evento.total_participantes || 0} /{' '}
+                  <strong>Participantes:</strong> {evento.total_participantes} /{' '}
                   {evento.limite_participantes || 'Ilimitado'}
                 </p>
+                {evento.conexoesParticipando &&
+                  evento.conexoesParticipando.length > 0 && (
+                    <p className="text-sm text-blue-600">
+                      Conexões participando:{' '}
+                      {evento.conexoesParticipando.join(', ')}
+                    </p>
+                  )}
                 {evento.participa ? (
                   <button
                     onClick={() => handleCancelarParticipacao(evento.id)}
                     className="bg-red-600 text-white px-4 py-2 rounded mt-2 hover:bg-red-700"
                   >
                     Cancelar Participação
-                  </button>
-                ) : evento.total_participantes >=
-                  (evento.limite_participantes || Infinity) ? (
-                  <button
-                    disabled
-                    className="bg-gray-400 text-white px-4 py-2 rounded mt-2 cursor-not-allowed"
-                  >
-                    Lotado
                   </button>
                 ) : (
                   <button

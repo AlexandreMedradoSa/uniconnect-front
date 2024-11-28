@@ -1,151 +1,181 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import apiClient from '@/lib/apiClient';
-import { Evento, Grupo } from '@/types/apiTypes';
 
 export default function HomePage() {
   const router = useRouter();
-  const token =
-    typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  const [eventos, setEventos] = useState<Evento[]>([]);
-  const [grupos, setGrupos] = useState<Grupo[]>([]);
-  const [loadingEventos, setLoadingEventos] = useState(true);
-  const [loadingGrupos, setLoadingGrupos] = useState(true);
+  const [eventosAtivos, setEventosAtivos] = useState([]);
+  const [gruposDestaque, setGruposDestaque] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [eventosResponse, gruposResponse] = await Promise.all([
+        apiClient.get('/eventos', {
+          params: { limit: 3 },
+        }),
+        apiClient.get('/grupos', {
+          params: { limit: 3 },
+        }),
+      ]);
+
+      setEventosAtivos(eventosResponse.data);
+      setGruposDestaque(gruposResponse.data);
+    } catch (err) {
+      console.error('Erro ao carregar informações:', err);
+      setError('Não foi possível carregar as informações.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (token) {
-      router.push('/dashboard'); // Redireciona para o dashboard se o usuário estiver autenticado
-      return;
-    }
-
-    const fetchData = async () => {
-      try {
-        const eventosResponse = await apiClient.get<Evento[]>('/eventos');
-        const gruposResponse = await apiClient.get<Grupo[]>('/grupos');
-        setEventos(eventosResponse.data.slice(0, 3));
-        setGrupos(gruposResponse.data.slice(0, 3));
-      } catch (error) {
-        console.error('Erro ao carregar dados:', error);
-      } finally {
-        setLoadingEventos(false);
-        setLoadingGrupos(false);
-      }
-    };
-
     fetchData();
-  }, [token, router]);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-blue-50">
+        <p className="text-blue-600 text-lg font-bold">Carregando...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-blue-50 text-gray-800">
-      {/* Header */}
-      <header className="bg-blue-600 text-white py-6 shadow-md">
-        <div className="container mx-auto px-4 flex justify-between items-center">
-          <h1 className="text-3xl font-bold">UniConnect</h1>
-          <div className="space-x-4">
-            <button
-              onClick={() => router.push('/login')}
-              className="px-4 py-2 bg-white text-blue-600 font-semibold rounded hover:bg-gray-100 transition"
-            >
-              Login
-            </button>
+    <div className="min-h-screen bg-gradient-to-r from-blue-50 via-white to-blue-50 text-gray-800">
+      {/* Hero Section */}
+      <section className="bg-blue-600 text-white py-16">
+        <div className="container mx-auto px-6 text-center">
+          <h1 className="text-4xl font-bold md:text-5xl">
+            Conecte-se. Aprenda. Cresça.
+          </h1>
+          <p className="mt-4 text-lg md:text-xl">
+            Descubra grupos de estudo, participe de eventos acadêmicos e faça
+            parte de uma comunidade vibrante de alunos!
+          </p>
+          <div className="mt-8 flex justify-center space-x-4">
             <button
               onClick={() => router.push('/signup')}
-              className="px-4 py-2 bg-white text-blue-600 font-semibold rounded hover:bg-gray-100 transition"
+              className="px-6 py-3 bg-white text-blue-600 font-bold rounded shadow hover:bg-gray-100 transition"
             >
               Registrar-se
             </button>
+            <button
+              onClick={() => router.push('/login')}
+              className="px-6 py-3 bg-blue-700 font-bold rounded shadow hover:bg-blue-800 transition"
+            >
+              Entrar
+            </button>
           </div>
         </div>
-      </header>
+      </section>
 
-      {/* Hero Section */}
-      <section className="bg-blue-100 py-12">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-2xl font-semibold mb-4">
-            Conectando Universitários em Todo Lugar
+      {/* Eventos Ativos */}
+      <section className="py-16">
+        <div className="container mx-auto px-6">
+          <h2 className="text-3xl font-bold text-center text-gray-800">
+            Eventos Acadêmicos Ativos
           </h2>
-          <p className="text-lg text-gray-600 mb-6">
-            Explore grupos de estudo, participe de eventos acadêmicos e crie
-            conexões significativas para o seu futuro.
+          <p className="text-center text-gray-600 mt-4">
+            Explore eventos e participe para ampliar seus conhecimentos.
           </p>
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="px-6 py-3 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700 transition"
-          >
-            Explorar Agora
-          </button>
-        </div>
-      </section>
-
-      {/* Destaques */}
-      <section className="container mx-auto px-4 py-12">
-        <h3 className="text-xl font-bold mb-6 text-blue-600">
-          Eventos em Destaque
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {loadingEventos ? (
-            <p className="text-gray-600">Carregando eventos...</p>
-          ) : eventos.length > 0 ? (
-            eventos.map((evento) => (
-              <div key={evento.id} className="p-4 bg-white shadow-md rounded">
-                <h4 className="text-lg font-bold text-blue-600">
-                  {evento.nome}
-                </h4>
-                <p className="text-sm text-gray-600">{evento.descricao}</p>
+          {error && <p className="text-center text-red-500 mt-4">{error}</p>}
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {eventosAtivos.map((evento: any) => (
+              <div
+                key={evento.id}
+                className="bg-white p-4 rounded shadow hover:shadow-md transition"
+              >
+                <h3 className="text-xl font-semibold">{evento.nome}</h3>
+                <p className="text-gray-600">{evento.descricao}</p>
+                <p className="text-gray-600 mt-2">
+                  <strong>Data:</strong>{' '}
+                  {new Date(evento.data).toLocaleDateString()}
+                </p>
+                <p className="text-gray-600">
+                  <strong>Curso:</strong> {evento.curso}
+                </p>
+                <p className="text-gray-600">
+                  <strong>Participantes:</strong> {evento.total_participantes}
+                </p>
                 <button
-                  onClick={() => router.push(`/eventos/${evento.id}`)}
+                  onClick={() => router.push('/signup')}
                   className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
                 >
-                  Saber Mais
+                  Saiba Mais
                 </button>
               </div>
-            ))
-          ) : (
-            <p className="text-gray-600">
-              Nenhum evento disponível no momento.
-            </p>
-          )}
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Grupos Recomendados */}
-      <section className="container mx-auto px-4 py-12">
-        <h3 className="text-xl font-bold mb-6 text-blue-600">
-          Grupos Recomendados
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {loadingGrupos ? (
-            <p className="text-gray-600">Carregando grupos...</p>
-          ) : grupos.length > 0 ? (
-            grupos.map((grupo) => (
-              <div key={grupo.id} className="p-4 bg-white shadow-md rounded">
-                <h4 className="text-lg font-bold text-blue-600">
-                  {grupo.nome}
-                </h4>
-                <p className="text-sm text-gray-600">{grupo.descricao}</p>
+      {/* Grupos de Estudo em Destaque */}
+      <section className="bg-gray-50 py-16">
+        <div className="container mx-auto px-6">
+          <h2 className="text-3xl font-bold text-center text-gray-800">
+            Grupos de Estudo em Destaque
+          </h2>
+          <p className="text-center text-gray-600 mt-4">
+            Junte-se a grupos com interesses em comum.
+          </p>
+          {error && <p className="text-center text-red-500 mt-4">{error}</p>}
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {gruposDestaque.map((grupo: any) => (
+              <div
+                key={grupo.id}
+                className="bg-white p-4 rounded shadow hover:shadow-md transition"
+              >
+                <h3 className="text-xl font-semibold">{grupo.nome}</h3>
+                <p className="text-gray-600">{grupo.descricao}</p>
+                <p className="text-gray-600 mt-2">
+                  <strong>Curso:</strong> {grupo.curso}
+                </p>
+                <p className="text-gray-600">
+                  <strong>Semestre:</strong> {grupo.semestre}
+                </p>
                 <button
-                  onClick={() => router.push(`/grupos/${grupo.id}`)}
-                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                  onClick={() => router.push('/signup')}
+                  className="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
                 >
-                  Participar
+                  Saiba Mais
                 </button>
               </div>
-            ))
-          ) : (
-            <p className="text-gray-600">Nenhum grupo disponível no momento.</p>
-          )}
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-blue-600 text-white py-6 text-center">
-        <p>
-          &copy; {new Date().getFullYear()} UniConnect. Todos os direitos
-          reservados.
-        </p>
-      </footer>
+      {/* Estatísticas */}
+      <section className="py-16">
+        <div className="container mx-auto px-6">
+          <h2 className="text-3xl font-bold text-center text-gray-800">
+            Junte-se à nossa comunidade
+          </h2>
+          <p className="text-center text-gray-600 mt-4">
+            Veja o impacto que já causamos!
+          </p>
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <div>
+              <h3 className="text-4xl font-bold text-blue-600">200+</h3>
+              <p className="mt-2 text-gray-600">Grupos Criados</p>
+            </div>
+            <div>
+              <h3 className="text-4xl font-bold text-green-600">1,500+</h3>
+              <p className="mt-2 text-gray-600">Conexões Formadas</p>
+            </div>
+            <div>
+              <h3 className="text-4xl font-bold text-red-600">300+</h3>
+              <p className="mt-2 text-gray-600">Eventos Realizados</p>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

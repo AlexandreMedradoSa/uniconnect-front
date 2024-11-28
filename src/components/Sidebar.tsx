@@ -54,6 +54,7 @@ const Sidebar = () => {
     { name: 'Grupos de Estudo', path: '/grupos' },
     { name: 'Eventos Acadêmicos', path: '/eventos' },
     { name: 'Conexões', path: '/conexoes' },
+    { name: 'Bate-Papo', path: '/chat' },
   ];
 
   const adminLinks = [

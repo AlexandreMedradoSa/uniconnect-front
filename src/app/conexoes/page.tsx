@@ -209,15 +209,18 @@ export default function ConexoesPage() {
         { headers: { Authorization: `Bearer ${token}` } },
       );
 
-      // Atualizar a lista de solicitações enviadas
-      const usuarioSolicitado = searchResults.find(
-        (user) => user.id === amigoId,
+      // Atualizar a lista de sugestões
+      setSugestoes((prev) =>
+        prev.filter((sugestao) => sugestao.id !== amigoId),
       );
+
+      // Adicionar à lista de solicitações enviadas
+      const usuarioSolicitado = sugestoes.find(
+        (sugestao) => sugestao.id === amigoId,
+      );
+
       if (usuarioSolicitado) {
         setSolicitacoesEnviadas((prev) => [...prev, usuarioSolicitado]);
-
-        // Remover o usuário dos resultados de busca
-        setSearchResults((prev) => prev.filter((user) => user.id !== amigoId));
       }
 
       alert(response.data.message || 'Solicitação enviada com sucesso!');

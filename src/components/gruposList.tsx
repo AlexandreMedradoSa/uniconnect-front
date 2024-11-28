@@ -37,6 +37,9 @@ export default function GruposList() {
   });
   const [cursos, setCursos] = useState<Option[]>([]);
   const [interesses, setInteresses] = useState<Option[]>([]);
+  const [gruposConexoesNaoParticipa, setGruposConexoesNaoParticipa] = useState<
+    Grupo[]
+  >([]);
 
   const router = useRouter(); // Mantendo o router para redirecionamentos
   const token = localStorage.getItem('token');
@@ -47,7 +50,6 @@ export default function GruposList() {
       try {
         setLoading(true);
         if (!token || !usuarioId) {
-          console.log(usuarioId);
           setError('Usuário não autenticado.');
           return;
         }
@@ -57,6 +59,17 @@ export default function GruposList() {
         });
 
         const todosGrupos = response.data;
+
+        const conexoesResponse = await apiClient.get(
+          `/users/${usuarioId}/conexoes`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+
+        const conexoesIds = conexoesResponse.data.map(
+          (conexao: any) => conexao.id,
+        );
 
         const gruposClassificados = await Promise.all(
           todosGrupos.map(async (grupo: Grupo) => {
@@ -73,13 +86,17 @@ export default function GruposList() {
                 (membro: { id: string }) => membro.id === usuarioId,
               );
 
-              return { grupo, participa };
+              const conexoesParticipam = membros.some(
+                (membro: { id: string }) => conexoesIds.includes(membro.id),
+              );
+
+              return { grupo, participa, conexoesParticipam };
             } catch (err) {
               console.error(
                 `Erro ao verificar membros do grupo ${grupo.id}:`,
                 err,
               );
-              return { grupo, participa: false };
+              return { grupo, participa: false, conexoesParticipam: false };
             }
           }),
         );
@@ -92,8 +109,15 @@ export default function GruposList() {
           .filter((resultado) => !resultado.participa)
           .map((resultado) => resultado.grupo);
 
+        const conexoesNaoParticipa = gruposClassificados
+          .filter(
+            (resultado) => resultado.conexoesParticipam && !resultado.participa,
+          )
+          .map((resultado) => resultado.grupo);
+
         setGruposParticipa(participa);
         setGruposNaoParticipa(naoParticipa);
+        setGruposConexoesNaoParticipa(conexoesNaoParticipa);
       } catch (err) {
         console.error('Erro ao buscar grupos:', err);
         setError('Erro ao carregar grupos.');
@@ -375,7 +399,31 @@ export default function GruposList() {
             ))}
           </div>
         </div>
-
+        <div className="mb-8">
+          <h2 className="text-lg font-bold mb-4 text-blue-600">
+            Grupos que suas conexões participam
+          </h2>
+          {gruposConexoesNaoParticipa.length === 0 ? (
+            <p className="text-gray-500">Nenhum grupo encontrado.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {gruposConexoesNaoParticipa.map((grupo) => (
+                <div
+                  key={grupo.id}
+                  className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg hover:bg-blue-50 cursor-pointer transition"
+                  onClick={() => router.push(`/grupos/${grupo.id}`)}
+                >
+                  <h2 className="text-lg font-semibold text-blue-600">
+                    {grupo.nome}
+                  </h2>
+                  <p className="text-gray-700 mt-2 line-clamp-3">
+                    {grupo.descricao}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="mb-8">
           <h2 className="text-lg font-bold mb-4 text-blue-600">
             Grupos que você não participa
@@ -410,57 +458,102 @@ export default function GruposList() {
           <div className="bg-white p-8 rounded-lg shadow-lg w-96">
             <h2 className="text-xl font-bold mb-4">Criar Novo Grupo</h2>
             <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="Nome do Grupo"
-                value={newGrupo.nome}
-                onChange={(e) =>
-                  setNewGrupo({ ...newGrupo, nome: e.target.value })
-                }
-                className="w-full p-2 border rounded-md"
-              />
-              <textarea
-                placeholder="Descrição"
-                value={newGrupo.descricao}
-                onChange={(e) =>
-                  setNewGrupo({ ...newGrupo, descricao: e.target.value })
-                }
-                className="w-full p-2 border rounded-md"
-              />
-              <Select
-                options={cursos}
-                placeholder="Selecione um Curso"
-                value={cursos.find((c) => c.value === newGrupo.curso)}
-                onChange={(selected) =>
-                  setNewGrupo({ ...newGrupo, curso: selected?.label || '' })
-                }
-              />
-              <input
-                type="number"
-                placeholder="Semestre"
-                value={newGrupo.semestre}
-                onChange={(e) => {
-                  if (e.target.value) {
+              <div>
+                <label
+                  htmlFor="nomeGrupo"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Nome do Grupo
+                </label>
+                <input
+                  id="nomeGrupo"
+                  type="text"
+                  placeholder="Nome do Grupo"
+                  value={newGrupo.nome}
+                  onChange={(e) =>
+                    setNewGrupo({ ...newGrupo, nome: e.target.value })
+                  }
+                  className="w-full p-2 border rounded-md"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="descricaoGrupo"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Descrição
+                </label>
+                <textarea
+                  id="descricaoGrupo"
+                  placeholder="Descrição"
+                  value={newGrupo.descricao}
+                  onChange={(e) =>
+                    setNewGrupo({ ...newGrupo, descricao: e.target.value })
+                  }
+                  className="w-full p-2 border rounded-md"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="cursoGrupo"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Curso
+                </label>
+                <Select
+                  inputId="cursoGrupo"
+                  options={cursos}
+                  placeholder="Selecione um Curso"
+                  value={cursos.find((c) => c.value === newGrupo.curso)}
+                  onChange={(selected) =>
+                    setNewGrupo({ ...newGrupo, curso: selected?.label || '' })
+                  }
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="semestreGrupo"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Semestre
+                </label>
+                <input
+                  id="semestreGrupo"
+                  type="number"
+                  placeholder="Semestre"
+                  value={newGrupo.semestre}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setNewGrupo({
+                        ...newGrupo,
+                        semestre: parseInt(e.target.value),
+                      });
+                    }
+                  }}
+                  className="w-full p-2 border rounded-md"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="interessesGrupo"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Interesses
+                </label>
+                <Select
+                  inputId="interessesGrupo"
+                  options={interesses}
+                  isMulti
+                  placeholder="Selecione os Interesses"
+                  value={newGrupo.interesses}
+                  onChange={(selected) => {
                     setNewGrupo({
                       ...newGrupo,
-                      semestre: parseInt(e.target.value),
+                      interesses: selected ? [...selected] : [],
                     });
-                  }
-                }}
-                className="w-full p-2 border rounded-md"
-              />
-              <Select
-                options={interesses}
-                isMulti
-                placeholder="Selecione os Interesses"
-                value={newGrupo.interesses}
-                onChange={(selected) => {
-                  setNewGrupo({
-                    ...newGrupo,
-                    interesses: selected ? [...selected] : [], // Converte para um array mutável
-                  });
-                }}
-              />
+                  }}
+                />
+              </div>
             </div>
             <div className="flex justify-end space-x-4 mt-6">
               <button

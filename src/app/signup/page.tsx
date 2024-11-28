@@ -22,10 +22,19 @@ export default function SignupPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError(''); // Limpa o erro ao alterar o campo
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validação do formato do e-mail
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@edu\.unifor\.br$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('O e-mail deve estar no formato xxxx@edu.unifor.br');
+      return;
+    }
+
     try {
       await apiClient.post('/register', formData);
       setSuccessMessage(
