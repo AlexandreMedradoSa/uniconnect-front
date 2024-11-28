@@ -23,22 +23,38 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(''); // Limpa erros anteriores
     try {
       const response = await apiClient.post('/login', formData);
       const { token, userId, primeiro_login } = response.data;
+
+      // Verifica se o token foi retornado
+      if (!token) {
+        throw new Error('Token inválido. Por favor, tente novamente.');
+      }
 
       // Armazena o token e o userId no LocalStorage
       localStorage.setItem('token', token);
       localStorage.setItem('userId', userId);
 
+      // Armazena o token nos cookies
+      document.cookie = `token=${token}; path=/; samesite=lax`;
+
+      // Redireciona com base no status do primeiro login
       if (primeiro_login) {
         router.push('/setup'); // Redireciona para a tela de configuração inicial
       } else {
         router.push('/dashboard'); // Redireciona para o Dashboard
       }
     } catch (err: unknown) {
+      // Tratamento de erros detalhado
       if (err instanceof Error) {
-        setError(err?.message || 'Erro ao fazer login.');
+        console.error('Erro ao fazer login:', err.message);
+        setError(
+          err.message || 'Erro ao fazer login. Verifique suas credenciais.',
+        );
+      } else {
+        setError('Erro desconhecido. Tente novamente mais tarde.');
       }
     }
   };

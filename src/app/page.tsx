@@ -7,12 +7,19 @@ import { Evento, Grupo } from '@/types/apiTypes';
 
 export default function HomePage() {
   const router = useRouter();
+  const token =
+    typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [loadingEventos, setLoadingEventos] = useState(true);
   const [loadingGrupos, setLoadingGrupos] = useState(true);
 
   useEffect(() => {
+    if (token) {
+      router.push('/dashboard'); // Redireciona para o dashboard se o usuário estiver autenticado
+      return;
+    }
+
     const fetchData = async () => {
       try {
         const eventosResponse = await apiClient.get<Evento[]>('/eventos');
@@ -26,8 +33,9 @@ export default function HomePage() {
         setLoadingGrupos(false);
       }
     };
+
     fetchData();
-  }, []);
+  }, [token, router]);
 
   return (
     <div className="min-h-screen bg-blue-50 text-gray-800">

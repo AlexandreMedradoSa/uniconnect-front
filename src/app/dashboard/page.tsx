@@ -9,7 +9,7 @@ interface User {
 }
 
 interface Connection {
-  amigo_id: string;
+  id: string;
   name: string;
 }
 
@@ -68,7 +68,7 @@ export default function Dashboard() {
         setGroups(groupsResponse.data);
         setEvents(eventsResponse.data);
         setLoading(false);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Erro ao carregar o Dashboard:', error);
         setLoading(false);
       }
@@ -83,45 +83,6 @@ export default function Dashboard() {
 
   return (
     <div className="flex min-h-screen bg-gray-100 text-gray-800">
-      {/* Menu Lateral */}
-      <nav className="w-64 bg-blue-600 text-white p-4">
-        <h2 className="text-2xl font-bold mb-4">UniConnect</h2>
-        <ul className="space-y-3">
-          <li>
-            <button
-              className="block w-full text-left py-2 px-3 hover:bg-blue-500 rounded"
-              onClick={() => router.push('/conexoes')}
-            >
-              Conexões
-            </button>
-          </li>
-          <li>
-            <button
-              className="block w-full text-left py-2 px-3 hover:bg-blue-500 rounded"
-              onClick={() => router.push('/grupos')}
-            >
-              Grupos de Estudo
-            </button>
-          </li>
-          <li>
-            <button
-              className="block w-full text-left py-2 px-3 hover:bg-blue-500 rounded"
-              onClick={() => router.push('/eventos')}
-            >
-              Eventos Acadêmicos
-            </button>
-          </li>
-          <li>
-            <button
-              className="block w-full text-left py-2 px-3 hover:bg-blue-500 rounded"
-              onClick={() => router.push('/interesses')}
-            >
-              Interesses
-            </button>
-          </li>
-        </ul>
-      </nav>
-
       {/* Conteúdo Principal */}
       <main className="flex-1 p-6">
         <header className="mb-6">
@@ -142,7 +103,7 @@ export default function Dashboard() {
             ) : (
               <ul className="space-y-2">
                 {connections.slice(0, 3).map((connection) => (
-                  <li key={connection.amigo_id} className="text-gray-700">
+                  <li key={connection.id} className="text-gray-700">
                     {connection.name}
                   </li>
                 ))}
